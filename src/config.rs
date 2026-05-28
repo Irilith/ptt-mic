@@ -20,6 +20,7 @@ pub struct GeneralConfig {
 
 #[derive(Clone, Debug)]
 pub struct ModeConfig {
+    pub device: Option<PathBuf>,
     pub binds: Vec<Bind>,
 }
 
@@ -51,6 +52,7 @@ fn default_notify() -> bool {
 
 #[derive(Deserialize)]
 struct RawModeConfig {
+    device: Option<PathBuf>,
     #[serde(default)]
     binds: Vec<RawBind>,
 }
@@ -98,7 +100,10 @@ impl Config {
                     release: raw_bind.release,
                 });
             }
-            modes.insert(name, ModeConfig { binds });
+            modes.insert(name, ModeConfig {
+                device: raw_mode.device,
+                binds,
+            });
         }
 
         Ok(Self {
@@ -109,5 +114,43 @@ impl Config {
             },
             modes,
         })
+    }
+
+    pub fn resolve_device(&self, mode_config: &ModeConfig) -> PathBuf {
+        mode_config.device.clone().unwrap_or_else(|| self.general.device.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_device() {
+        let global_device = PathBuf::from("/dev/input/event0");
+        let mode_device = PathBuf::from("/dev/input/event1");
+
+        let config = Config {
+            general: GeneralConfig {
+                device: global_device.clone(),
+                notify: true,
+                default_mode: None,
+            },
+            modes: HashMap::new(),
+        };
+
+        // 1. All modes without device set -> fallback to global (general) device
+        let mode_without_device = ModeConfig {
+            device: None,
+            binds: vec![],
+        };
+        assert_eq!(config.resolve_device(&mode_without_device), global_device);
+
+        // 2. Mode with specific device set -> uses its own device
+        let mode_with_device = ModeConfig {
+            device: Some(mode_device.clone()),
+            binds: vec![],
+        };
+        assert_eq!(config.resolve_device(&mode_with_device), mode_device);
     }
 }

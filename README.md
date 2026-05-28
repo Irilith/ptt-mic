@@ -4,14 +4,29 @@
 
 `ptt-mic` is a push-to-talk daemon for Linux, written in Rust. It reads raw input events from an evdev device and runs commands on button press and release. Supports runtime mode switching and IPC via a Unix socket.
 
+## Table of contents
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [How to build](#how-to-build)
+- [Setup](#setup)
+- [Usage](#usage)
+- [Uninstalling](#uninstalling)
+- [Design](#design)
+- [Compatibility](#compatibility)
+- [Contributing](#contributing)
+
 ## Prerequisites
 
 - Rust toolchain (`cargo`)
 - Your user needs to be in the `input` group to read evdev devices without root:
+
 ```bash
-  sudo usermod -aG input $USER
+sudo usermod -aG input $USER
 ```
-  Log out and back in after running this.
+
+Log out and back in after running this.
+
 - `obs-cmd` if you want OBS mode.
 - `notify-send` for desktop notifications (optional).
 
@@ -19,7 +34,7 @@
 
 Download the latest binary from the [release page](https://codeberg.org/Cinders/ptt-mic/releases) or build from source.
 
-## How to Build
+## How to build
 
 ```bash
 cargo build --release
@@ -37,7 +52,7 @@ Default location: `~/.config/ptt-mic/config.toml`
 
 ```toml
 [general]
-device = "/dev/input/event6"    # replace with your actual device
+device = "/dev/input/event6"    # run `evtest` to find your desired device
 notify = true
 default_mode = "desktop"
 
@@ -48,8 +63,9 @@ press = ["obs-cmd", "audio", "unmute", "Mic/Aux"]
 release = ["obs-cmd", "audio", "mute", "Mic/Aux"]
 
 [mode.desktop]
+device = "/dev/input/event11" 
 [[mode.desktop.binds]]
-button = "BTN_SIDE"
+button = "KEY_V"
 press = ["pactl", "set-source-mute", "@DEFAULT_SOURCE@", "0"]
 release = ["pactl", "set-source-mute", "@DEFAULT_SOURCE@", "1"]
 ```
@@ -87,3 +103,24 @@ ptt-mic uninstall
 ```
 
 Stops the service and removes the systemd file.
+
+## Design
+
+There are no restrictions on what actions you can trigger. Press and release are just shell commands, so you can wire up anything that has a CLI:
+
+```toml
+press = ["pactl", "set-source-mute", "@DEFAULT_SOURCE@", "0"]
+release = ["pactl", "set-source-mute", "@DEFAULT_SOURCE@", "1"]
+```
+
+Any tool that can be called from a terminal works here.
+
+## Compatibility
+
+Only tested on CachyOS with the Niri compositor. Never tested on other distros or window managers.
+
+For audio I use PipeWire, but since actions are just shell commands you can use whatever backend you want. `pactl` should cover most setups.
+
+## Contributing
+
+There are plenty of things in my mind to improve but this (project) isn't my main focus right now. If you feel like something a PTT daemon should have is missing, feel free to contribute. I'll check it when I can.
